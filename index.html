@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Splitter and Uploader</title>
+    <style>
+        pre {
+            text-align: right;
+            direction: rtl;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
     <h1>Audio Splitter and Uploader</h1>
@@ -13,6 +20,8 @@
     <div id="transcriptionResult"></div>
 
     <script>
+        const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
+
         async function splitAndUpload() {
             const fileInput = document.getElementById('audioFile');
             const audioFile = fileInput.files[0];
@@ -25,32 +34,34 @@
                 return;
             }
 
-            const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
+            // Split the file into chunks of maxSizeBytes
+            const audioChunks = splitAudioBySize(audioFile);
 
-            if (audioFile.size <= maxSizeBytes) {
-                // If the file is small enough, upload it directly
-                statusElement.innerText = 'Uploading audio file...';
-                const transcription = await uploadChunk(audioFile, 1);
-                transcriptionElement.innerHTML = formatTranscription(transcription);
-                statusElement.innerText = 'Upload complete.';
-            } else {
-                // Split the file into smaller chunks
-                const chunkSize = maxSizeBytes;
-                const chunks = [];
-                for (let i = 0; i < audioFile.size; i += chunkSize) {
-                    const chunk = audioFile.slice(i, i + chunkSize);
-                    chunks.push(new File([chunk], `chunk_${Math.floor(i / chunkSize) + 1}.${audioFile.name.split('.').pop()}`, { type: audioFile.type }));
-                }
-
-                let allTranscriptions = '';
-                for (let i = 0; i < chunks.length; i++) {
-                    statusElement.innerText = `Uploading chunk ${i + 1} of ${chunks.length}...`;
-                    allTranscriptions += await uploadChunk(chunks[i], i + 1);
-                }
-
-                statusElement.innerText = 'Upload complete.';
-                transcriptionElement.innerHTML = formatTranscription(allTranscriptions);
+            let allTranscriptions = '';
+            let cumulativeTime = 0;
+            for (let i = 0; i < audioChunks.length; i++) {
+                statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
+                const transcription = await uploadChunk(audioChunks[i], i + 1);
+                allTranscriptions += formatTranscription(transcription, cumulativeTime);
+                cumulativeTime = updateCumulativeTime(allTranscriptions); // Update cumulative time with the duration of the current chunk
             }
+
+            statusElement.innerText = 'Upload complete.';
+            transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
+        }
+
+        function splitAudioBySize(audioFile) {
+            const chunks = [];
+            let start = 0;
+
+            while (start < audioFile.size) {
+                const end = Math.min(start + maxSizeBytes, audioFile.size);
+                const chunk = audioFile.slice(start, end);
+                chunks.push(new File([chunk], `chunk_${chunks.length + 1}.${audioFile.name.split('.').pop()}`, { type: audioFile.type }));
+                start = end;
+            }
+
+            return chunks;
         }
 
         async function uploadChunk(chunk, chunkNumber) {
@@ -84,13 +95,41 @@
             }
         }
 
-        function formatTranscription(transcription) {
+        function formatTranscription(transcription, startTime = 0) {
             const lines = transcription.split(/\n|\r/);
             let formattedTranscription = '';
+            let currentTime = startTime;
+
             lines.forEach((line, index) => {
-                formattedTranscription += `${index + 1}\n${line.trim()}\n\n`;
+                const nextTime = currentTime + 3; // Example: increment by 3 seconds for each line
+                formattedTranscription += `${index + 1}
+${formatTimestamp(currentTime)} --> ${formatTimestamp(nextTime)}
+${line.trim()}
+
+`;
+                currentTime = nextTime;
             });
-            return `<h2>Transcription Result:</h2><pre>${formattedTranscription}</pre>`;
+
+            return formattedTranscription;
+        }
+
+        function updateCumulativeTime(transcription) {
+            const lines = transcription.split(/\n|\r/);
+            const lastTimestamp = lines[lines.length - 2]; // Last timestamp before text
+            if (lastTimestamp) {
+                const timeParts = lastTimestamp.split(/[:,]/).map(Number);
+                return (timeParts[0] * 3600) + (timeParts[1] * 60) + timeParts[2] + (timeParts[3] / 1000);
+            }
+            return 0;
+        }
+
+        function formatTimestamp(seconds) {
+            const date = new Date(seconds * 1000);
+            const hours = date.getUTCHours().toString().padStart(2, '0');
+            const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+            const secs = date.getUTCSeconds().toString().padStart(2, '0');
+            const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
+            return `${hours}:${minutes}:${secs},${ms}`;
         }
     </script>
 </body>
