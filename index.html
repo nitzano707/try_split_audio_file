@@ -44,11 +44,11 @@
 
                 statusElement.innerText = 'Splitting audio file...';
                 ffmpeg.FS('writeFile', 'input.mp3', await fetchFile(audioFile));
-                await ffmpeg.run('-i', 'input.mp3', '-f', 'segment', '-segment_time', '30', '-c', 'copy', 'output%03d.mp3');
+                await ffmpeg.run('-i', 'input.mp3', '-f', 'wav', '-c:a', 'pcm_s16le', 'output%03d.wav');
 
                 const chunks = [];
                 for (let i = 0; ; i++) {
-                    const filename = `output${String(i).padStart(3, '0')}.mp3`;
+                    const filename = `output${String(i).padStart(3, '0')}.wav`;
                     try {
                         chunks.push(ffmpeg.FS('readFile', filename));
                     } catch {
@@ -69,7 +69,7 @@
 
         async function uploadChunk(chunk, chunkNumber) {
             const formData = new FormData();
-            formData.append('file', new Blob([chunk], { type: 'audio/mpeg' }));
+            formData.append('file', new Blob([chunk], { type: 'audio/wav' }));
             formData.append('model', 'whisper-large-v3-turbo');
             formData.append('response_format', 'verbose_json');
             formData.append('language', 'he');
