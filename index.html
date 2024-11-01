@@ -29,31 +29,42 @@
                 return;
             }
 
-            statusElement.innerText = 'Loading FFmpeg...';
-            await ffmpeg.load();
+            const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
 
-            statusElement.innerText = 'Splitting audio file...';
-            ffmpeg.FS('writeFile', 'input.mp3', await fetchFile(audioFile));
-            await ffmpeg.run('-i', 'input.mp3', '-f', 'segment', '-segment_time', '30', '-c', 'copy', 'output%03d.mp3');
+            if (audioFile.size <= maxSizeBytes) {
+                // If the file is small enough, upload it directly
+                statusElement.innerText = 'Uploading audio file...';
+                const transcription = await uploadChunk(audioFile, 1);
+                transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${transcription}</pre>`;
+                statusElement.innerText = 'Upload complete.';
+            } else {
+                // Split the file into two chunks
+                statusElement.innerText = 'Loading FFmpeg...';
+                await ffmpeg.load();
 
-            const chunks = [];
-            for (let i = 0; ; i++) {
-                const filename = `output${String(i).padStart(3, '0')}.mp3`;
-                try {
-                    chunks.push(ffmpeg.FS('readFile', filename));
-                } catch {
-                    break;
+                statusElement.innerText = 'Splitting audio file...';
+                ffmpeg.FS('writeFile', 'input.mp3', await fetchFile(audioFile));
+                await ffmpeg.run('-i', 'input.mp3', '-f', 'segment', '-segment_time', '30', '-c', 'copy', 'output%03d.mp3');
+
+                const chunks = [];
+                for (let i = 0; ; i++) {
+                    const filename = `output${String(i).padStart(3, '0')}.mp3`;
+                    try {
+                        chunks.push(ffmpeg.FS('readFile', filename));
+                    } catch {
+                        break;
+                    }
                 }
-            }
 
-            let allTranscriptions = '';
-            for (let i = 0; i < chunks.length; i++) {
-                statusElement.innerText = `Uploading chunk ${i + 1} of ${chunks.length}...`;
-                allTranscriptions += await uploadChunk(chunks[i], i + 1);
-            }
+                let allTranscriptions = '';
+                for (let i = 0; i < chunks.length; i++) {
+                    statusElement.innerText = `Uploading chunk ${i + 1} of ${chunks.length}...`;
+                    allTranscriptions += await uploadChunk(chunks[i], i + 1);
+                }
 
-            statusElement.innerText = 'Upload complete.';
-            transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
+                statusElement.innerText = 'Upload complete.';
+                transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
+            }
         }
 
         async function uploadChunk(chunk, chunkNumber) {
