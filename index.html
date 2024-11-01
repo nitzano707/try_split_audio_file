@@ -88,42 +88,39 @@
 
                 const data = await response.json();
                 console.log(`Response for chunk ${chunkNumber}:`, data);
-                return data.segments ? data.segments.map(segment => segment.text).join(' ') : '';
+                return data.segments ? data.segments.map(segment => ({
+                    text: segment.text,
+                    start: segment.start,
+                    end: segment.end
+                })) : [];
             } catch (error) {
                 console.error(`Failed to upload chunk ${chunkNumber}:`, error);
                 alert(`Failed to upload chunk ${chunkNumber}: ${error.message}`);
-                return '';
+                return [];
             }
         }
 
-        function formatTranscription(transcription, startTime = 0) {
-            const lines = transcription.split(/\r?\n/); // ביטוי רגולרי מתוקן לפירוק שורות בצורה תקינה
+        function formatTranscription(transcriptionSegments, cumulativeTime) {
             let formattedTranscription = '';
-            let currentTime = startTime;
 
-            lines.forEach((line) => {
-                const sentenceChunks = splitIntoShortSentences(line.trim());
-                sentenceChunks.forEach((sentence) => {
-                    const nextTime = currentTime + (sentence.length / 5); // Increment time based on sentence length (e.g., 5 characters per second)
-                    formattedTranscription += `${segmentCounter}
-${formatTimestamp(currentTime)} --> ${formatTimestamp(nextTime)}
-${sentence}
+            transcriptionSegments.forEach((segment) => {
+                const startTime = cumulativeTime + segment.start;
+                const endTime = cumulativeTime + segment.end;
+
+                formattedTranscription += `${segmentCounter}
+${formatTimestamp(startTime)} --> ${formatTimestamp(endTime)}
+${segment.text}
 
 `;
-                    currentTime = nextTime;
-                    segmentCounter++; // Increment the global segment counter
-                });
+                segmentCounter++; // Increment the global segment counter
             });
 
             return formattedTranscription;
         }
 
-        function updateCumulativeTime(transcription) {
-            const lines = transcription.split(/\r?\n/); // ביטוי רגולרי מתוקן לפירוק שורות בצורה תקינה
-            const lastTimestamp = lines[lines.length - 2]; // Last timestamp before text
-            if (lastTimestamp) {
-                const timeParts = lastTimestamp.split(/[:,]/).map(Number);
-                return (timeParts[0] * 3600) + (timeParts[1] * 60) + timeParts[2] + (timeParts[3] / 1000);
+        function updateCumulativeTime(transcriptionSegments) {
+            if (transcriptionSegments.length > 0) {
+                return transcriptionSegments[transcriptionSegments.length - 1].end;
             }
             return 0;
         }
@@ -135,10 +132,6 @@ ${sentence}
             const secs = date.getUTCSeconds().toString().padStart(2, '0');
             const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
             return `${hours}:${minutes}:${secs},${ms}`;
-        }
-
-        function splitIntoShortSentences(text) {
-            return text.match(/[^.!?]+[.!?]/g) || [text];
         }
     </script>
 </body>
