@@ -22,6 +22,7 @@
     <script>
         const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
         let segmentCounter = 1; // Keep track of segment numbering globally
+        let cumulativeTime = 0; // Track cumulative time across all chunks
 
         async function splitAndUpload() {
             const fileInput = document.getElementById('audioFile');
@@ -39,12 +40,10 @@
             const audioChunks = splitAudioBySize(audioFile);
 
             let allTranscriptions = '';
-            let cumulativeTime = 0;
             for (let i = 0; i < audioChunks.length; i++) {
                 statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
-                allTranscriptions += formatTranscription(transcription, cumulativeTime);
-                cumulativeTime += getLastSegmentEndTime(transcription); // Update cumulative time with the duration of the current chunk
+                allTranscriptions += formatTranscription(transcription);
             }
 
             statusElement.innerText = 'Upload complete.';
@@ -96,30 +95,22 @@
             }
         }
 
-        function formatTranscription(transcriptionData, startTime = 0) {
-            const segments = transcriptionData.segments || [];
+        function formatTranscription(transcription) {
+            const segments = transcription.segments;
             let formattedTranscription = '';
-            let currentTime = startTime;
 
             segments.forEach((segment) => {
+                const { start, end, text } = segment;
                 formattedTranscription += `${segmentCounter}
-${formatTimestamp(currentTime)} --> ${formatTimestamp(currentTime + (segment.end - segment.start))}
-${segment.text}
+${formatTimestamp(cumulativeTime + start)} --> ${formatTimestamp(cumulativeTime + end)}
+${text}
 
 `;
-                currentTime += (segment.end - segment.start);
-                segmentCounter++; // Increment the global segment counter
+                segmentCounter++;
             });
 
+            cumulativeTime += transcription.duration;
             return formattedTranscription;
-        }
-
-        function getLastSegmentEndTime(transcriptionData) {
-            const segments = transcriptionData.segments || [];
-            if (segments.length > 0) {
-                return segments[segments.length - 1].end;
-            }
-            return 0;
         }
 
         function formatTimestamp(seconds) {
