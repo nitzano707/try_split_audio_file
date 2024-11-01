@@ -21,6 +21,7 @@
 
     <script>
         const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
+        let segmentCounter = 1; // Keep track of segment numbering globally
 
         async function splitAndUpload() {
             const fileInput = document.getElementById('audioFile');
@@ -43,7 +44,7 @@
                 statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
                 allTranscriptions += formatTranscription(transcription, cumulativeTime);
-                cumulativeTime += getLastChunkDuration(transcription); // Update cumulative time with the duration of the current chunk
+                cumulativeTime = updateCumulativeTime(allTranscriptions); // Update cumulative time with the duration of the current chunk
             }
 
             statusElement.innerText = 'Upload complete.';
@@ -96,29 +97,34 @@
         }
 
         function formatTranscription(transcription, startTime = 0) {
-            const lines = transcription.split(/\n|\r/);
+            const lines = transcription.split(/
+|
+/);
             let formattedTranscription = '';
             let currentTime = startTime;
 
             lines.forEach((line) => {
                 const sentenceChunks = splitIntoShortSentences(line.trim());
-                sentenceChunks.forEach((sentence, index) => {
-                    const nextTime = currentTime + (sentence.length / 5); // Estimate duration based on sentence length
-                    formattedTranscription += `${index + 1}
+                sentenceChunks.forEach((sentence) => {
+                    const nextTime = currentTime + (sentence.length / 5); // Increment time based on sentence length (e.g., 5 characters per second)
+                    formattedTranscription += `${segmentCounter}
 ${formatTimestamp(currentTime)} --> ${formatTimestamp(nextTime)}
 ${sentence}
 
 `;
                     currentTime = nextTime;
+                    segmentCounter++; // Increment the global segment counter
                 });
             });
 
             return formattedTranscription;
         }
 
-        function getLastChunkDuration(transcription) {
-            const lines = transcription.split(/\n|\r/);
-            const lastTimestamp = lines[lines.length - 4]; // Last timestamp before text
+        function updateCumulativeTime(transcription) {
+            const lines = transcription.split(/
+|
+/);
+            const lastTimestamp = lines[lines.length - 2]; // Last timestamp before text
             if (lastTimestamp) {
                 const timeParts = lastTimestamp.split(/[:,]/).map(Number);
                 return (timeParts[0] * 3600) + (timeParts[1] * 60) + timeParts[2] + (timeParts[3] / 1000);
