@@ -97,9 +97,7 @@
         }
 
         function formatTranscription(transcription, startTime = 0) {
-            const lines = transcription.split(/
-|
-/);
+            const lines = transcription.split(/\r?\n/); // ביטוי רגולרי מתוקן לפירוק שורות בצורה תקינה
             let formattedTranscription = '';
             let currentTime = startTime;
 
@@ -121,9 +119,7 @@ ${sentence}
         }
 
         function updateCumulativeTime(transcription) {
-            const lines = transcription.split(/
-|
-/);
+            const lines = transcription.split(/\r?\n/); // ביטוי רגולרי מתוקן לפירוק שורות בצורה תקינה
             const lastTimestamp = lines[lines.length - 2]; // Last timestamp before text
             if (lastTimestamp) {
                 const timeParts = lastTimestamp.split(/[:,]/).map(Number);
