@@ -31,7 +31,7 @@
                 // If the file is small enough, upload it directly
                 statusElement.innerText = 'Uploading audio file...';
                 const transcription = await uploadChunk(audioFile, 1);
-                transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${transcription}</pre>`;
+                transcriptionElement.innerHTML = formatTranscription(transcription);
                 statusElement.innerText = 'Upload complete.';
             } else {
                 // Split the file into smaller chunks
@@ -49,7 +49,7 @@
                 }
 
                 statusElement.innerText = 'Upload complete.';
-                transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
+                transcriptionElement.innerHTML = formatTranscription(allTranscriptions);
             }
         }
 
@@ -82,6 +82,15 @@
                 alert(`Failed to upload chunk ${chunkNumber}: ${error.message}`);
                 return '';
             }
+        }
+
+        function formatTranscription(transcription) {
+            const lines = transcription.split(/\n|\r/);
+            let formattedTranscription = '';
+            lines.forEach((line, index) => {
+                formattedTranscription += `${index + 1}\n${line.trim()}\n\n`;
+            });
+            return `<h2>Transcription Result:</h2><pre>${formattedTranscription}</pre>`;
         }
     </script>
 </body>
