@@ -43,8 +43,10 @@
             for (let i = 0; i < audioChunks.length; i++) {
                 statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
-                allTranscriptions += formatTranscription(transcription, cumulativeTime);
-                cumulativeTime = updateCumulativeTime(allTranscriptions); // Update cumulative time with the duration of the current chunk
+                if (transcription) {
+                    allTranscriptions += formatTranscription(transcription, cumulativeTime);
+                    cumulativeTime = updateCumulativeTime(allTranscriptions); // Update cumulative time with the duration of the current chunk
+                }
             }
 
             statusElement.innerText = 'Upload complete.';
@@ -88,39 +90,41 @@
 
                 const data = await response.json();
                 console.log(`Response for chunk ${chunkNumber}:`, data);
-                return data.segments ? data.segments.map(segment => ({
-                    text: segment.text,
-                    start: segment.start,
-                    end: segment.end
-                })) : [];
+                return data.segments ? data : null;
             } catch (error) {
                 console.error(`Failed to upload chunk ${chunkNumber}:`, error);
                 alert(`Failed to upload chunk ${chunkNumber}: ${error.message}`);
-                return [];
+                return null;
             }
         }
 
-        function formatTranscription(transcriptionSegments, cumulativeTime) {
+        function formatTranscription(transcriptionData, startTime = 0) {
             let formattedTranscription = '';
+            let currentTime = startTime;
 
-            transcriptionSegments.forEach((segment) => {
-                const startTime = cumulativeTime + segment.start;
-                const endTime = cumulativeTime + segment.end;
+            transcriptionData.segments.forEach((segment) => {
+                const segmentStart = currentTime;
+                const segmentEnd = currentTime + segment.end - segment.start;
 
                 formattedTranscription += `${segmentCounter}
-${formatTimestamp(startTime)} --> ${formatTimestamp(endTime)}
+${formatTimestamp(segmentStart)} --> ${formatTimestamp(segmentEnd)}
 ${segment.text}
 
 `;
+
+                currentTime = segmentEnd;
                 segmentCounter++; // Increment the global segment counter
             });
 
             return formattedTranscription;
         }
 
-        function updateCumulativeTime(transcriptionSegments) {
-            if (transcriptionSegments.length > 0) {
-                return transcriptionSegments[transcriptionSegments.length - 1].end;
+        function updateCumulativeTime(transcription) {
+            const lines = transcription.split(/\n/);
+            const lastTimestamp = lines[lines.length - 3]; // Last timestamp before text
+            if (lastTimestamp) {
+                const timeParts = lastTimestamp.split(/[:,]/).map(Number);
+                return (timeParts[0] * 3600) + (timeParts[1] * 60) + timeParts[2] + (timeParts[3] / 1000);
             }
             return 0;
         }
@@ -132,6 +136,10 @@ ${segment.text}
             const secs = date.getUTCSeconds().toString().padStart(2, '0');
             const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
             return `${hours}:${minutes}:${secs},${ms}`;
+        }
+
+        function splitIntoShortSentences(text) {
+            return text.match(/[^.!?]+[.!?]/g) || [text];
         }
     </script>
 </body>
