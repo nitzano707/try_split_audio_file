@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Splitter and Uploader</title>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.10.0/dist/ffmpeg.min.js"></script>
 </head>
 <body>
     <h1>Audio Splitter and Uploader</h1>
@@ -14,9 +13,6 @@
     <div id="transcriptionResult"></div>
 
     <script>
-        const { createFFmpeg, fetchFile } = FFmpeg;
-        const ffmpeg = createFFmpeg({ log: true });
-
         async function splitAndUpload() {
             const fileInput = document.getElementById('audioFile');
             const audioFile = fileInput.files[0];
@@ -38,22 +34,12 @@
                 transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${transcription}</pre>`;
                 statusElement.innerText = 'Upload complete.';
             } else {
-                // Split the file into two chunks
-                statusElement.innerText = 'Loading FFmpeg...';
-                await ffmpeg.load();
-
-                statusElement.innerText = 'Splitting audio file...';
-                ffmpeg.FS('writeFile', 'input.mp3', await fetchFile(audioFile));
-                await ffmpeg.run('-i', 'input.mp3', '-f', 'wav', '-c:a', 'pcm_s16le', 'output%03d.wav');
-
+                // Split the file into smaller chunks
+                const chunkSize = maxSizeBytes;
                 const chunks = [];
-                for (let i = 0; ; i++) {
-                    const filename = `output${String(i).padStart(3, '0')}.wav`;
-                    try {
-                        chunks.push(ffmpeg.FS('readFile', filename));
-                    } catch {
-                        break;
-                    }
+                for (let i = 0; i < audioFile.size; i += chunkSize) {
+                    const chunk = audioFile.slice(i, i + chunkSize);
+                    chunks.push(new File([chunk], `chunk_${Math.floor(i / chunkSize) + 1}.${audioFile.name.split('.').pop()}`, { type: audioFile.type }));
                 }
 
                 let allTranscriptions = '';
@@ -69,7 +55,7 @@
 
         async function uploadChunk(chunk, chunkNumber) {
             const formData = new FormData();
-            formData.append('file', new Blob([chunk], { type: 'audio/wav' }));
+            formData.append('file', chunk);
             formData.append('model', 'whisper-large-v3-turbo');
             formData.append('response_format', 'verbose_json');
             formData.append('language', 'he');
