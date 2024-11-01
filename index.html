@@ -43,7 +43,7 @@
                 statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
                 allTranscriptions += formatTranscription(transcription, cumulativeTime);
-                cumulativeTime = updateCumulativeTime(allTranscriptions); // Update cumulative time with the duration of the current chunk
+                cumulativeTime += getLastChunkDuration(transcription); // Update cumulative time with the duration of the current chunk
             }
 
             statusElement.innerText = 'Upload complete.';
@@ -100,10 +100,10 @@
             let formattedTranscription = '';
             let currentTime = startTime;
 
-            lines.forEach((line, index) => {
+            lines.forEach((line) => {
                 const sentenceChunks = splitIntoShortSentences(line.trim());
-                sentenceChunks.forEach((sentence) => {
-                    const nextTime = currentTime + 3; // Increment by 3 seconds for each short sentence
+                sentenceChunks.forEach((sentence, index) => {
+                    const nextTime = currentTime + (sentence.length / 5); // Estimate duration based on sentence length
                     formattedTranscription += `${index + 1}
 ${formatTimestamp(currentTime)} --> ${formatTimestamp(nextTime)}
 ${sentence}
@@ -116,9 +116,9 @@ ${sentence}
             return formattedTranscription;
         }
 
-        function updateCumulativeTime(transcription) {
+        function getLastChunkDuration(transcription) {
             const lines = transcription.split(/\n|\r/);
-            const lastTimestamp = lines[lines.length - 2]; // Last timestamp before text
+            const lastTimestamp = lines[lines.length - 4]; // Last timestamp before text
             if (lastTimestamp) {
                 const timeParts = lastTimestamp.split(/[:,]/).map(Number);
                 return (timeParts[0] * 3600) + (timeParts[1] * 60) + timeParts[2] + (timeParts[3] / 1000);
