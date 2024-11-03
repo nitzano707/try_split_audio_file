@@ -20,7 +20,7 @@
     <div id="transcriptionResult"></div>
 
     <script>
-        const maxSizeBytes = 24 * 1024 * 1024; // 2 MB
+        const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
         let segmentCounter = 1; // Keep track of segment numbering globally
         let cumulativeTime = 0; // Track cumulative time across all chunks
 
@@ -42,6 +42,7 @@
             let allTranscriptions = '';
             for (let i = 0; i < audioChunks.length; i++) {
                 statusElement.innerText = `Uploading chunk ${i + 1} of ${audioChunks.length}...`;
+                console.log(`Starting upload for chunk ${i + 1}`); // Log added here
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
                 allTranscriptions += formatTranscription(transcription);
             }
@@ -58,6 +59,7 @@
                 const end = Math.min(start + maxSizeBytes, audioFile.size);
                 const chunk = audioFile.slice(start, end);
                 chunks.push(new File([chunk], `chunk_${chunks.length + 1}.${audioFile.name.split('.').pop()}`, { type: audioFile.type }));
+                console.log(`Chunk created: Type - ${audioFile.type}, Size - ${chunk.size} bytes`); // Log added here
                 start = end;
             }
 
@@ -87,7 +89,7 @@
                 }
 
                 const data = await response.json();
-                console.log(`Response for chunk ${chunkNumber}:`, data);
+                console.log(`Response for chunk ${chunkNumber}:`, data); // Log response data
                 return data;
             } catch (error) {
                 console.error(`Failed to upload chunk ${chunkNumber}:`, error);
