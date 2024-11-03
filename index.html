@@ -67,6 +67,7 @@
         }
 
         async function uploadChunk(chunk, chunkNumber) {
+            console.log(`Uploading chunk: Type - ${chunk.type}, Size - ${(chunk.size / (1024 * 1024)).toFixed(2)} MB`); // Log to display chunk type and size in MB
             const formData = new FormData();
             formData.append('file', chunk);
             // formData.append('model', 'whisper-large-v3-turbo');
