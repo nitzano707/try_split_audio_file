@@ -27,7 +27,7 @@
         async function splitAndUpload() {
             const fileInput = document.getElementById('audioFile');
             const audioFile = fileInput.files[0];
-            const statusElement = document.getElementById('status');
+            t statusElement = document.getElementById('status');
             const transcriptionElement = document.getElementById('transcriptionResult');
             transcriptionElement.innerHTML = '';
 
@@ -59,7 +59,7 @@
                 const end = Math.min(start + maxSizeBytes, audioFile.size);
                 const chunk = audioFile.slice(start, end);
                 chunks.push(new File([chunk], `chunk_${chunks.length + 1}.${audioFile.name.split('.').pop()}`, { type: audioFile.type }));
-                console.log(`Chunk created: Type - ${audioFile.type}, Size - ${chunk.size} bytes`); // Log added here
+                 console.log(`Chunk created: Type - ${audioFile.type}, Size - ${(chunk.size / (1024 * 1024)).toFixed(2)} MB`); // Log added here in MB
                 start = end;
             }
 
