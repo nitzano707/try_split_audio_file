@@ -60,7 +60,7 @@
         }
 
         async function splitAudioFile(file) {
-            const chunkSize = 24 * 1024 * 1024; // 24 MB
+            const chunkSize = 2 * 1024 * 1024; // 24 MB
             const chunks = Math.ceil(file.size / chunkSize);
             const audioChunks = [];
 
