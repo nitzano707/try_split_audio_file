@@ -45,10 +45,18 @@
                 console.log(`Starting upload for chunk ${i + 1}`); // Log added here
                 const transcription = await uploadChunk(audioChunks[i], i + 1);
                 allTranscriptions += formatTranscription(transcription);
+
+                // Add download link for each chunk
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(audioChunks[i]);
+                downloadLink.download = `chunk_${i + 1}.${audioFile.name.split('.').pop()}`;
+                downloadLink.innerText = `Download chunk ${i + 1}`;
+                transcriptionElement.appendChild(downloadLink);
+                transcriptionElement.appendChild(document.createElement('br'));
             }
 
             statusElement.innerText = 'Upload complete.';
-            transcriptionElement.innerHTML = `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
+            transcriptionElement.innerHTML += `<h2>Transcription Result:</h2><pre>${allTranscriptions}</pre>`;
         }
 
         function splitAudioBySize(audioFile) {
